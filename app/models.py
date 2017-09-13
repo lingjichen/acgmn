@@ -33,7 +33,7 @@ class Role(db.Model):
             'Moderator': (Permission.FOLLOW |
                           Permission.COMMENT |
                           Permission.WRITE_ARTTCLES |
-                          Permission.MODERATE_COMMENT, False)
+                          Permission.MODERATE_COMMENT, False),
             'Administrator': (0xff, False)
         }
         for r in roles:
