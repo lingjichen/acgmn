@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}ACGMN - 确认你的账户{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+    <h1>
+        你好, {{ current_user.username }}!
+    </h1>
+    <h3>你还没有确认你的账户.</h3>
+    <p>
+        在你接受这个网页之前你必须确认你的账户.
+        检查你的邮箱，你应该收到了一封带有确认链接的邮件.
+    </p>
+    <p>
+        需要其他的确认邮箱?
+        <a href="{{ url_for('auth.resend_confirmation') }}">点击这里</a>
+    </p>
+</div>
+{% endblock %}

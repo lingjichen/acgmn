@@ -10,11 +10,13 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MAIL_SERVER = 'smtp.qq.com'
     MAIL_PORT = 465
-    MAIL_USE_TLS = True
+    #QQ使用SSL，google使用tls，设置错误不能发送邮件
+    MAIL_USE_TLS = False
+    MAIL_USE_SSL = True
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     FLASKY_MAIL_SUBJECT_PREFIX = '[ACGMN]'
-    FLASKY_MAIL_SENDER = 'ACGMN Admin <EXAMPLE>'
+    FLASKY_MAIL_SENDER = '499910843@qq.com'
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
 
     @staticmethod
