@@ -22,7 +22,7 @@ def after_request(respongse):
                 % (query.statement, query.parameters, query.duration,
                    query.context)
             )
-            return respongse
+    return respongse
 
 #关闭路由，只在测试环境中可用
 @main.route('/shutdown')
