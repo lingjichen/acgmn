@@ -8,6 +8,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard to guess'
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_RECORD_QUERIES = True
     MAIL_SERVER = 'smtp.qq.com'
     MAIL_PORT = 465
     #QQ使用SSL，google使用tls，设置错误不能发送邮件
@@ -21,6 +22,7 @@ class Config:
     ACGMN_POSTS_PER_PAGE = 20
     ACGMN_FOLLOWERS_PER_PAGE = 50
     ACGMN_COMMENTS_PER_PAGE = 30
+    ACGMN_SLOW_DB_QUERY_TIME = 0.5
 
     @staticmethod
     def init_app(app):

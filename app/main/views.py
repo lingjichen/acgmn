@@ -4,12 +4,25 @@
 from flask import render_template, redirect, url_for, abort, flash, request,\
     current_app, make_response
 from flask_login import login_required, current_user
+from flask_sqlalchemy import get_debug_queries
 from .. import db
 from ..models import User, Role, Permission, Post, Comment
 from . import main
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm,\
     CommentForm
 from ..decorators import admin_required, permission_required
+
+#处理完请求后记录查询缓慢的时间
+@main.after_app_request
+def after_request(respongse):
+    for query in get_debug_queries():
+        if query.duration >= current_app.config['ACGMN_SLOW_DB_QUERY_TIME']:
+            current_app.logger.warning(
+                'Slow query: %s \nParameters: %s\nDuration: %fs\nContext: %s\n'
+                % (query.statement, query.parameters, query.duration,
+                   query.context)
+            )
+            return respongse
 
 #关闭路由，只在测试环境中可用
 @main.route('/shutdown')
