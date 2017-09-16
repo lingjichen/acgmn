@@ -20,6 +20,7 @@ class Config:
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
     ACGMN_POSTS_PER_PAGE = 20
     ACGMN_FOLLOWERS_PER_PAGE = 50
+    ACGMN_COMMENTS_PER_PAGE = 30
 
     @staticmethod
     def init_app(app):

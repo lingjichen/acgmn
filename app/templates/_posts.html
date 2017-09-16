@@ -3,7 +3,7 @@
     <li class="post">
         <div class="post-thumbnail">
             <a href="{{ url_for('.user', username=post.author.username) }}">
-                <img class="img-rounded profile-thumbnail" src="{{ post.author.gravatar(size=20) }}">
+                <img class="img-rounded profile-thumbnail" src="{{ post.author.gravatar(size=40) }}">
             </a>
         </div>
         <div class="popover-content">
@@ -28,6 +28,9 @@
                 {% endif %}
                 <a href="{{ url_for('.post', id=post.id) }}">
                     <span class="label label-default">固定链接</span>
+                </a>
+                <a href="{{ url_for('.post', id=post.id) }}#comments">
+                    <span class="label label-primary">{{ post.comments.count() }} Comments</span>
                 </a>
             </div>
         </div>
