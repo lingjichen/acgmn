@@ -11,11 +11,22 @@ from .forms import EditProfileForm, EditProfileAdminForm, PostForm,\
     CommentForm
 from ..decorators import admin_required, permission_required
 
+#关闭路由，只在测试环境中可用
+@main.route('/shutdown')
+def server_shutdown():
+    if not current_app.testing:
+        abort(404)
+    shutdown = request.environ.get('werkzeug.server.shutdown')
+    if not shutdown:
+        abort(500)
+    shutdown()
+    return 'Shutting down...'
+
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
     form = PostForm()
-    if current_user.can(Permission.WRITE_ARTTCLES) and \
+    if current_user.can(Permission.WRITE_ARTICLES) and \
         form.validate_on_submit():
         post = Post(body=form.body.data,
                     author=current_user._get_current_object())
@@ -179,7 +190,6 @@ def followers(username):
 
 @main.route('/followed-by/<username>')
 def followed_by(username):
-
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('无效用户')

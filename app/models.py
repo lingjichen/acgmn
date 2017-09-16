@@ -7,20 +7,20 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from markdown import markdown
 import bleach
-from flask import current_app, request
+from flask import current_app, request, url_for
 from flask_login import UserMixin, AnonymousUserMixin
+from app.exceptions import ValidationError
 from . import db, login_manager
 
 
 class Permission:
     FOLLOW = 0x01
     COMMENT = 0x02
-    WRITE_ARTTCLES = 0x04
+    WRITE_ARTICLES = 0x04
     MODERATE_COMMENTS = 0x08
     ADMINISTER = 0x80
 
 class Role(db.Model):
-
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True)
@@ -33,11 +33,11 @@ class Role(db.Model):
         roles = {
             'User': (Permission.FOLLOW |
                      Permission.COMMENT |
-                     Permission.WRITE_ARTTCLES, True),
+                     Permission.WRITE_ARTICLES, True),
             'Moderator': (Permission.FOLLOW |
                           Permission.COMMENT |
-                          Permission.WRITE_ARTTCLES |
-                          Permission.MODERATE_COMMENT, False),
+                          Permission.WRITE_ARTICLES |
+                          Permission.MODERATE_COMMENTS, False),
             'Administrator': (0xff, False)
         }
         for r in roles:
@@ -129,7 +129,7 @@ class User(UserMixin, db.Model):
         if self.email is not None and self.avatar_hash is None:
             self.avatar_hash = hashlib.md5(
                 self.email.encode('utf-8')).hexdigest()
-        self.followed().append(Follow(followed=self))
+        self.followed.append(Follow(followed=self))
 
     @property
     def password(self):
@@ -187,7 +187,7 @@ class User(UserMixin, db.Model):
             return False
         if data.get('change_email') != self.id:
             return False
-        new_email = data.get('nwe_email')
+        new_email = data.get('new_email')
         if new_email is None:
             return False
         if self.query.filter_by(email=new_email).first() is not None:
@@ -213,7 +213,7 @@ class User(UserMixin, db.Model):
         if request.is_secure:
             url = 'https://secure.gravatar.com/avatar'
         else:
-            url = 'http://secure.gravatar.com/avatar'
+            url = 'http://www.gravatar.com/avatar'
         hash = self.avatar_hash or hashlib.md5(
             self.email.encode('utf-8')).hexdigest()
         return '{url}/{hash}?s={size}&d={default}&r={rating}'.format(
@@ -226,7 +226,7 @@ class User(UserMixin, db.Model):
             db.session.add(f)
 
     def unfollow(self, user):
-        f = self.followed.filter_by(follower_id=user.id).first()
+        f = self.followed.filter_by(followed_id=user.id).first()
         if f:
             db.session.delete(f)
 
@@ -242,6 +242,34 @@ class User(UserMixin, db.Model):
     def followed_posts(self):
         return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
             .filter(Follow.follower_id == self.id)
+
+    def to_json(self):
+        json_user = {
+            'url': url_for('api.get_user', id=self.id, _external=True),
+            'username': self.username,
+            'member_since': self.member_since,
+            'last_seen': self.last_seen,
+            'posts': url_for('api.get_user_posts', id=self.id, _external=True),
+            'followed_posts': url_for('api.get_user_followed_posts',
+                                      id=self.id, _external=True),
+            'post_count': self.posts.count()
+        }
+        return json_user
+
+    def generate_auth_token(self, expiration):
+        s = Serializer(current_app.config['SECRET_KEY'],
+                       expires_in=expiration)
+        return s.dumps({'id': self.id}).decode('ascii')
+
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except:
+            return None
+        return User.query.get(data['id'])
+
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -294,6 +322,27 @@ class Post(db.Model):
         ))
 
 
+    def to_json(self):
+        json_post = {
+            'url': url_for('api.get_post', id=self.id, _external=True),
+            'body': self.body,
+            'body_html': self.body_html,
+            'timestamp': self.timestamp,
+            'author': url_for('api.get_user', id=self.author_id,
+                              _external=True),
+            'comments': url_for('api.get_post_comments',
+                                      id=self.id, _external=True),
+            'comment_count': self.comments.count()
+        }
+        return json_post
+
+    @staticmethod
+    def from_json(josn_post):
+        body = josn_post.get('body')
+        if body is None or body == '':
+            raise ValidationError('文章没有正文')
+        return Post(body=body)
+
 db.event.listen(Post.body, 'set', Post.on_change_body)
 
 
@@ -316,5 +365,23 @@ class Comment(db.Model):
             tags=allowed_tags, strip=True
         ))
 
+    def to_json(self):
+        json_comment = {
+            'url': url_for('api.get_comment', id=self.id, _external=True),
+            'post': url_for('api.get_post', id=self.post_id, _external=True),
+            'body': self.body,
+            'body_html': self.body_html,
+            'timestamp': self.timestamp,
+            'author': url_for('api.get_user', id=self.author_id,
+                              _external=True)
+        }
+        return json_comment
+
+    @staticmethod
+    def from_json(json_comment):
+        body = json_comment.get('body')
+        if body is None and body == '':
+            raise ValidationError('评论没有正文')
+        return Comment(body=body)
 
 db.event.listen(Comment.body, 'set', Comment.on_changed_body)

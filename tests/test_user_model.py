@@ -13,7 +13,8 @@ class UserModelTestCase(unittest.TestCase):
         self.app = create_app('testing')
         self.app_context = self.app.app_context()
         self.app_context.push()
-        db.create_all
+        db.create_all()
+        Role.insert_roles()
 
     def tearDown(self):
         db.session.remove()
@@ -24,7 +25,6 @@ class UserModelTestCase(unittest.TestCase):
         u = User(password='cat')
         self.assertTrue(u.password_hash is not None)
 
-    #此句有疑问
     def test_no_password_getter(self):
         u = User(password='cat')
         with self.assertRaises(AttributeError):
@@ -45,7 +45,7 @@ class UserModelTestCase(unittest.TestCase):
         db.session.add(u)
         db.session.commit()
         token = u.generate_confirmation_token()
-        self.assertTrue((u.confirme(token)))
+        self.assertTrue((u.confirm(token)))
 
     def test_invalid_confirmation_token(self):
         u1 = User(password='cat')
@@ -113,20 +113,19 @@ class UserModelTestCase(unittest.TestCase):
 
     def test_roles_and_permissions(self):
         u = User(email='john@example.com', password='cat')
-        self.assertTrue(u.can(Permission.WRITE_ARTTCLES))
-        self.assertFalse(u.can(Permission.MODERATE_COMMENT))
+        self.assertTrue(u.can(Permission.WRITE_ARTICLES))
+        self.assertFalse(u.can(Permission.MODERATE_COMMENTS))
 
     def test_anonymous_user(self):
         u = AnonymousUser()
-        self.assertTrue(u.can(Permission.FOLLOW))
+        self.assertFalse(u.can(Permission.FOLLOW))
 
     def test_timestamps(self):
         u = User(password='cat')
         db.session.add(u)
-        db.commit()
+        db.session.commit()
         self.assertTrue(
             (datetime.utcnow() - u.member_since).total_seconds() < 3)
-        )
         self.assertTrue(
         (datetime.utcnow() - u.last_seen).total_seconds() <3
         )
@@ -137,10 +136,11 @@ class UserModelTestCase(unittest.TestCase):
         db.session.commit()
         time.sleep(2)
         last_seen_before = u.last_seen
-        u.ping()self.assertTrue((u.last_seen > last_seen_before))
+        u.ping()
+        self.assertTrue((u.last_seen > last_seen_before))
 
     def test_gravatar(self):
-        u = User(email='john@example.com', passowrd='cat')
+        u = User(email='john@example.com', password='cat')
         with self.app.test_request_context('/'):
             gravatar = u.gravatar()
             gravatar_256 = u.gravatar(size=256)
@@ -193,3 +193,14 @@ class UserModelTestCase(unittest.TestCase):
         db.session.delete(u2)
         db.session.commit()
         self.assertTrue(Follow.query.count() == 1)
+
+
+    def test_to_json(self):
+        u = User(email='john@example.com', password='cat')
+        db.session.add(u)
+        db.session.commit()
+        json_user = u.to_json()
+        expected_keys = ['url', 'username', 'member_since', 'last_seen',
+                         'posts', 'followed_posts', 'post_count']
+        self.assertEqual(sorted(json_user.keys()), sorted(expected_keys))
+        self.assertTrue('api/v1.0/users/' in json_user['url'])
